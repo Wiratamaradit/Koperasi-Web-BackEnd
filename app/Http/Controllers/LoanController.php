@@ -81,10 +81,9 @@ class LoanController extends Controller
 
     function loanList(request $request)
     {
-        // dd($request->userId);
-        $query = loan::query()->with('users');
+        $loanQuery = Loan::query()->with('users');
 
-        $filters = [
+        $loanFilters = [
             'code' => 'code',
             'name' => 'users.name',
             'nik' => 'users.nik',
@@ -99,17 +98,38 @@ class LoanController extends Controller
         ];
 
         if ($request->has("userId")) {
-            $filters["userId"] = "userId";
+            $loanFilters["userId"] = "userId";
         }
 
-        foreach ($filters as $param => $column) {
+        foreach ($loanFilters as $param => $column) {
             $value = $request->query($param);
             if ($value) {
-                $query->where($column, $value);
+                $loanQuery->where($column, $value);
             }
         }
-        $loan = $query->get();
-        return response()->json(["message" => "Berhasil memuat data", "data" => $loan], 200);
+
+        $loanData = $loanQuery->get();
+        $loanArray = [];
+        foreach ($loanData as $loan) {
+            $loanArray[] = [
+                "id" => $loan->id,
+                "user" => $loan->users,
+                "code" => $loan->code,
+                "nominal" => $loan->nominal,
+                'tenor' => $loan->tenor,
+                'date' => $loan->date,
+                'description' => $loan->description,
+                'loanStatus' => $loan->loanStatus,
+                'validationLoanStatus' => $loan->validationLoanStatus,
+                'status' => $loan->status,
+                "installments" => $loan->installments
+            ];
+        }
+
+        return response()->json([
+            "message" => "Berhasil memuat data",
+            "data" => $loanArray
+        ], 200);
     }
 
     function loanValidationRegion(Request $request, $id)
