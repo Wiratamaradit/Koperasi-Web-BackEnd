@@ -59,7 +59,7 @@ class LoanController extends Controller
                 $installment->date = Carbon::parse($loan->date)->addMonths($i + 1);
 
                 if ($installment->paymentStatus === null) {
-                    $installment->paymentStatus = "Unpaid";
+                    $installment->paymentStatus = "UnPaid";
                 }
                 if ($installment->installmentStatus === null) {
                     $installment->installmentStatus = "On-Process";
@@ -75,7 +75,7 @@ class LoanController extends Controller
                 ]
             ], 200);
         } else {
-            return response()->json(["message" => "Gagal menyimpan pinjaman"], 500);
+            return response()->json(["message" => "Gagal menyimpan pinjaman"], 404);
         }
     }
 
@@ -116,6 +116,7 @@ class LoanController extends Controller
                 "user" => $loan->users,
                 "code" => $loan->code,
                 "nominal" => $loan->nominal,
+                "interest" => $loan->interest,
                 'tenor' => $loan->tenor,
                 'date' => $loan->date,
                 'description' => $loan->description,
@@ -163,12 +164,6 @@ class LoanController extends Controller
             $loan->loanStatus = "Approved";
             $loan->status = "ACTIVE";
             $loan->save();
-
-            if ($loan->status === 'ACTIVE') {
-                DB::installment(function () use ($loan) {
-                    $this->installAdd($loan);
-                });
-            }
             return response(["message" => 'Pinjaman anda sudah disetujui', 'data' => $loan], 200);
         } elseif ($loanStatus === "Rejected") {
             $loan->loanStatus = "Rejected";

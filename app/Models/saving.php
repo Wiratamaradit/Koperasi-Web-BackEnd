@@ -21,7 +21,12 @@ class saving extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'userId');
+        return $this->belongsTo(User::class, 'userId', 'id');
+    }
+
+    public function savingpayments() 
+    {
+        return $this->hasMany(savingpayment::class, 'saveId', 'id');
     }
 
 }

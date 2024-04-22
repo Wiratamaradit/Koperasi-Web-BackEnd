@@ -43,9 +43,9 @@ class SavingController extends Controller
 
     function saveList(request $request)
     {
-        $query = saving::query()->with('user');
+        $saveQuery = saving::query()->with('user');
 
-        $filters = [
+        $saveFilters = [
             'code' => 'code',
             'name' => 'user.name',
             'nik' => 'user.nik',
@@ -58,18 +58,34 @@ class SavingController extends Controller
             'status' => 'status',
         ];
 
-        if($request->has('userId')){
-            $filters['userId'] = 'userId';
+        if ($request->has('userId')) {
+            $saveFilters['userId'] = 'userId';
         }
 
-        foreach ($filters as $param => $column) {
+        foreach ($saveFilters as $param => $column) {
             $value = $request->query($param);
             if ($value) {
-                $query->where($column, $value);
+                $saveQuery->where($column, $value);
             }
         }
-        $save = $query->get();
-        return response()->json(["message" => "Berhasil memuat data", "data" => $save], 200);
+        $saveData = $saveQuery->get();
+        $saveArray = [];
+        foreach ($saveData as $save) {
+            $saveArray[] = [
+                'id' => $save->id,
+                'user' => $save->user,
+                'code' => $save->code,
+                'nominalPerMonth' => $save->nominalPerMonth,
+                'interest' => $save->interest,
+                'date' => $save->date,
+                'paymentMethod' => $save->paymentMethod,
+                'timePeriod' => $save->timePeriod,
+                'validationSavingStatus' => $save->validationSavingStatus,
+                'status' => $save->status,
+                'savingpayments' => $save->savingpayments
+            ];
+        }
+        return response()->json(["message" => "Berhasil memuat data", "data" => $saveArray], 200);
     }
 
     function saveValidationRegion(Request $request, $id)
@@ -81,7 +97,7 @@ class SavingController extends Controller
         $validationSavingStatus = $request->input('validationSavingStatus');
         if ($validationSavingStatus === "Approved") {
             $save->validationSavingStatus = "Approved";
-            $save->status = "ACTIVE";	
+            $save->status = "ACTIVE";
             $save->save();
             return response(['message' => 'Data sudah sesuai', 'data' => $save], 200);
         } elseif ($validationSavingStatus === "Rejected") {

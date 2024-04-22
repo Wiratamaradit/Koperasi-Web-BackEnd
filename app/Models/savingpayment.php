@@ -21,4 +21,8 @@ class savingpayment extends Model
     {
         return $this->belongsTo(saving::class, 'saveId', 'id');
     }
+    public function users()
+    {
+        return $this->belongsTo(User::class, 'userId', 'id');
+    }
 }

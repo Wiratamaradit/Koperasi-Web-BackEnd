@@ -42,7 +42,6 @@ Route::post('saveAdd',[SavingController::class,'saveAdd']);
 Route::get('saveList',[SavingController::class,'saveList']);
 Route::post('saveValidationRegion/{id}', [SavingController::class, 'saveValidationRegion']);
 
-Route::post('installAdd',[InstallmentController::class,'installAdd']);
 Route::get('installList',[InstallmentController::class,'installList']);
 
 Route::post('loantransAdd',[LoantransController::class,'loantransAdd']);

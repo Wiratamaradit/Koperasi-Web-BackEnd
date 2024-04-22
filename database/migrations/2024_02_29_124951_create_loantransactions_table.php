@@ -14,10 +14,8 @@ return new class extends Migration
         Schema::create('loantransactions', function (Blueprint $table) {
             $table->id()->primary;
             $table->unsignedBigInteger('installmentId');
-            $table->double('nominal');
-            $table->string('paymentMethod');
-            $table->string('description');
-            $table->string('status');
+            $table->string('fileName');
+            $table->binary('receipt');
 
             $table->foreign('installmentId')->references('id')->on('installments');
         });

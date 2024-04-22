@@ -15,8 +15,9 @@ return new class extends Migration
             $table->id()->primary;
             $table->unsignedBigInteger('saveId');
             $table->double('nominal');
+            $table->double('payment');
             $table->string('paymentMethod');
-            $table->string('description');
+            $table->date('date');
             $table->string('status');
 
             $table->foreign('saveId')->references('id')->on('savings');
