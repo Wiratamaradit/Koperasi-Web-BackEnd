@@ -24,7 +24,8 @@ class loan extends Model
         return $this->belongsTo(User::class, 'userId', 'id');
     }
 
-    public function installments() {
+    public function installments()
+    {
         return $this->hasMany(installment::class, 'loanId', 'id');
     }
 

@@ -7,35 +7,35 @@ use Illuminate\Http\Request;
 use App\Models\loan;
 use App\Models\installment;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class LoanController extends Controller
 {
-
     public function loanAdd(Request $request)
     {
-        $existingloan = DB::table('loans')->
-            where('userId', $request->input('userId'))->
-            first();
-
-        if ($existingloan) {
-            return response(["message" => "Anda sudah melakukan pinjaman"], 400);
+        $user = User::find($request->input('userId'));
+        if (!$user) {
+            return response(["message" => "Pengguna tidak ditemukan."], 404);
         }
 
-        $loan = new loan;
-        $user = User::find($request->input('userId'));
-        $loan->userId = $request->input('userId');
-        $loan->code = 'PJM-' . $user->nik . '-00' . loan::count() + 1;
+        $existingLoan = $user->loans()->where('status', 'ACTIVE')->first();
+        if ($existingLoan) {
+            return response([
+                "message" => "Anda sudah memiliki pinjaman aktif, 
+                tidak dapat melakukan pengajuan pinjaman lagi."
+            ], 400);
+        }
+
+        $loan = new Loan;
+        $loan->userId = $user->id;
+        $loan->code = 'PJM-' . $user->nik . '-' . sprintf('%03d', Loan::count() + 1);
         $loan->nominal = $request->input('nominal');
         $loan->interest = $request->input('interest');
         $loan->tenor = $request->input('tenor');
         $loan->date = $request->input('date');
         $loan->description = $request->input('description');
-
         $loan->validationLoanStatus = $request->input('validationLoanStatus') ?? null;
         $loan->loanStatus = $request->input('loanStatus') ?? null;
         $loan->status = $request->input('status') ?? null;
-
         if ($loan->validationLoanStatus === null) {
             $loan->validationLoanStatus = "On-Process";
         }
@@ -45,46 +45,18 @@ class LoanController extends Controller
         if ($loan->status === null) {
             $loan->status = "INACTIVE";
         }
+        $loan->reason = $request->input('reason');
         $loan->save();
-
-        if ($loan->id) {
-            for ($i = 1; $i <= $loan->tenor; $i++) {
-                $installment = new installment;
-                $installment->loanId = $loan->id;
-                $installment->userId = $loan->userId;
-                $installment->nominalPayment = ($loan->nominal / $loan->tenor) + ($loan->nominal * 0.002);
-                $installment->paymentMethod = 'Payroll';
-                $installment->paymentStatus = $request->input('paymentStatus') ?? null;
-                $installment->installmentStatus = $request->input('installmentStatus') ?? null;
-                $installment->date = Carbon::parse($loan->date)->addMonths($i + 1);
-
-                if ($installment->paymentStatus === null) {
-                    $installment->paymentStatus = "UnPaid";
-                }
-                if ($installment->installmentStatus === null) {
-                    $installment->installmentStatus = "On-Process";
-                }
-                $installment->save();
-            }
-
-            return response()->json([
-                "message" => "Berhasil melakukan pengajuan pinjaman",
-                "data" => [
-                    "loan" => $loan,
-                    "installment" => [$installment]
-                ]
-            ], 200);
-        } else {
-            return response()->json(["message" => "Gagal menyimpan pinjaman"], 404);
-        }
+        return response(["message" => "Berhasil melakukan pengajuan pinjaman", "data" => $loan], 200);
     }
 
     function loanList(request $request)
     {
-        $loanQuery = Loan::query()->with('users');
+        $loanQuery = loan::query()->with('users', 'installments');
 
         $loanFilters = [
             'code' => 'code',
+            'userId' => 'userId',
             'name' => 'users.name',
             'nik' => 'users.nik',
             'nominal' => 'nominal',
@@ -95,6 +67,7 @@ class LoanController extends Controller
             'loanStatus' => 'loanStatus',
             'validationLoanStatus' => 'validationLoanStatus',
             'status' => 'status',
+            'reason' => 'reason',
         ];
 
         if ($request->has("userId")) {
@@ -111,10 +84,17 @@ class LoanController extends Controller
         $loanData = $loanQuery->get();
         $loanArray = [];
         foreach ($loanData as $loan) {
+            $installments = [];
+            foreach ($loan->installments as $installment) {
+                $installmentData = $installment->toArray();
+                $installmentData['installmentPayment'] = $installment->getInstallmentPayment();
+                $installments[] = $installmentData;
+            }
             $loanArray[] = [
                 "id" => $loan->id,
                 "user" => $loan->users,
                 "code" => $loan->code,
+                "userId" => $loan->userId,
                 "nominal" => $loan->nominal,
                 "interest" => $loan->interest,
                 'tenor' => $loan->tenor,
@@ -123,7 +103,8 @@ class LoanController extends Controller
                 'loanStatus' => $loan->loanStatus,
                 'validationLoanStatus' => $loan->validationLoanStatus,
                 'status' => $loan->status,
-                "installments" => $loan->installments
+                'reason' => $loan->reason,
+                'installments' => $installments,
             ];
         }
 
@@ -140,40 +121,97 @@ class LoanController extends Controller
             return response(["message" => "Pinjaman tidak ditemukan"], 404);
         }
         $validationLoanStatus = $request->input('validationLoanStatus');
+        $reason = $request->input('reason');
         if ($validationLoanStatus === "Valid") {
             $loan->validationLoanStatus = "Valid";
             $loan->save();
             return response(['message' => 'Data sudah sesuai', 'data' => $loan], 200);
         } elseif ($validationLoanStatus === "Invalid") {
             $loan->validationLoanStatus = "Invalid";
+            $loan->reason = $reason;
             $loan->save();
             return response(['message' => 'Data tidak sesuai', 'data' => $loan], 200);
+        } elseif ($validationLoanStatus === "Revisions") {
+            $loan->validationLoanStatus = "Revisions";
+            $loan->reason = $reason;
+            $loan->save();
+            return response(["message" => 'Pinjaman anda sedang di revisi', 'data' => $loan], 200);
         }
-
         return response(['message' => 'Data tidak sesuai', 'data' => $loan], 400);
     }
 
     function loanValidationGeneral(Request $request, $id)
     {
-        $loan = loan::find($id);
+        $loan = Loan::find($id);
         if (!$loan) {
             return response(["message" => "Pinjaman tidak ditemukan"], 400);
         }
         $loanStatus = $request->input('loanStatus');
+        $reason = $request->input('reason');
         if ($loanStatus === "Approved") {
             $loan->loanStatus = "Approved";
             $loan->status = "ACTIVE";
             $loan->save();
-            return response(["message" => 'Pinjaman anda sudah disetujui', 'data' => $loan], 200);
+            // Membuat angsuran
+            $installments = [];
+            for ($i = 1; $i <= $loan->tenor; $i++) {
+                $installment = new Installment;
+                $installment->loanId = $loan->id;
+                $installment->userId = $loan->userId;
+                $installment->nominalPayment = ($loan->nominal / $loan->tenor) + ($loan->nominal * 0.02);
+                $installment->paymentMethod = 'Payroll';
+                $installment->paymentStatus = $request->input('paymentStatus') ?? 'UnPaid';
+                $installment->installmentStatus = $request->input('installmentStatus') ?? 'On-Process';
+                $installment->date = Carbon::parse($loan->date)->addMonths($i);
+                $installment->save();
+                $installments[] = $installment;
+            }
+            return response()->json([
+                "message" => "Berhasil melakukan pengajuan pinjaman",
+                "data" => [
+                    "loan" => $loan,
+                    "installment" => $installments
+                ]
+            ], 200);
         } elseif ($loanStatus === "Rejected") {
             $loan->loanStatus = "Rejected";
+            $loan->reason = $reason;
             $loan->status = "INACTIVE";
             $loan->save();
             return response(["message" => 'Pinjaman anda tidak disetujui', 'data' => $loan], 400);
         }
-        $loan->save();
+
         return response(["message" => "Pinjaman anda ditolak", "data" => $loan], 400);
     }
 
+    function loanUpdate(Request $request, $id)
+    {
+        $loan = loan::find($id);
 
+        if (!$loan) {
+            return response()->json(["message" => "Pinjaman tidak ditemukan"], 404);
+        }
+
+        $userId = $request->input('userId');
+        $user = User::find($userId);
+
+        $loan->nominal = $request->input('nominal');
+        $loan->interest = $request->input('interest');
+        $loan->tenor = $request->input('tenor');
+        $loan->date = $request->input('date');
+        $loan->description = $request->input('description');
+        $loan->validationLoanStatus = "On-Process";
+        $loan->loanStatus = $request->input('loanStatus');
+        $loan->status = $request->input('status');
+        $loan->reason = $request->input('reason');
+        $loan->save();
+
+        return response()->json(["message" => "Pinjaman berhasil diperbarui", "data" => $loan], 200);
+    }
+
+    function loanEdit(Request $request, $id)
+    {
+        $loan = loan::find($id);
+        return response(["message" => "Data :", "data" => $loan], 200);
+    }
 }

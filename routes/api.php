@@ -30,13 +30,18 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('userLogin',[UserController::class,'userLogin']);
 Route::post('userAdd',[UserController::class,'userAdd']);
 Route::get('userList',[UserController::class,'userList']);
+Route::get('userEdit/{id}', [UserController::class, 'userEdit']);
+Route::put('userUpdate/{id}', [UserController::class, 'userUpdate']);
 Route::post('userValidationRegion/{id}', [UserController::class, 'userValidationRegion']);
 Route::post('userValidationGeneral/{id}', [UserController::class, 'userValidationGeneral']);
 
 Route::post('loanAdd',[LoanController::class,'loanAdd']);
 Route::get('loanList',[LoanController::class,'loanList']);
+Route::get('loanEdit/{id}', [LoanController::class, 'loanEdit']);
+Route::put('loanUpdate/{id}', [LoanController::class, 'loanUpdate']);
 Route::post('loanValidationRegion/{id}', [LoanController::class, 'loanValidationRegion']);
 Route::post('loanValidationGeneral/{id}', [LoanController::class, 'loanValidationGeneral']);
+
 
 Route::post('saveAdd',[SavingController::class,'saveAdd']);
 Route::get('saveList',[SavingController::class,'saveList']);

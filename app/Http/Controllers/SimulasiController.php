@@ -8,7 +8,6 @@ class SimulasiController extends Controller
 {
     public function loanSimulation(Request $request)
     {
-        // $installment = $request->input('installment', []);
         $installment = [];
 
         $loanTotal = $request->input('loanTotal');

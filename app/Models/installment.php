@@ -13,7 +13,8 @@ class installment extends Model
     protected $primaryKey = 'id';
 
     protected $fillable = [
-        'loanId', 'userId'
+        'loanId',
+        'userId'
     ];
 
     public function loan()
@@ -24,6 +25,12 @@ class installment extends Model
     public function users()
     {
         return $this->belongsTo(User::class, 'userId');
+    }
+
+    public function getInstallmentPayment()
+    {
+        $loantransactionQuery = loantransaction::query()->where('installmentId', $this->id)->get();
+        return $loantransactionQuery;
     }
 
 }

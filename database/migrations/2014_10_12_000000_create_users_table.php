@@ -27,7 +27,7 @@ return new class extends Migration
             $table->string('address');
             $table->integer('phoneNumber');
             $table->string('bankName');
-            $table->integer('accountNumber');
+            $table->string('accountNumber');
             $table->string('validationStatus');
             $table->string('registrationStatus');
             $table->string('status');

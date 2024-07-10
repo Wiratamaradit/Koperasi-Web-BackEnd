@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\saving;
 
@@ -11,25 +10,27 @@ class SavingController extends Controller
 {
     function saveAdd(Request $request)
     {
-        $existingsave = DB::table('savings')->where('userId', $request->input('userId'))->first();
-
-        if ($existingsave) {
-            return response(["message" => "Anda sudah melakukan pengajuan simpanan"], 400);
+        $user = User::find($request->input('userId'));
+        if (!$user) {
+            return response(["message" => "Pengguna tidak ditemukan."], 404);
         }
 
+        $existingSave = $user->savings()->where('status', 'ACTIVE')->first();
+        if ($existingSave) {
+            return response([
+                "message" => "Anda sudah memiliki simpanan aktif, tidak dapat melakukan pengajuan simpanan lagi."
+            ], 400);
+        }
         $save = new saving;
-        $user = User::find($request->input('userId'));
-        $save->userId = $request->input('userId');
-        $save->code = 'SMP-' . $user->nik . '-00' . saving::count() + 1;
+        $save->userId = $user->id;
+        $save->code = 'SMP-' . $user->nik . '-' . sprintf('%03d', saving::count() + 1);
         $save->nominalPerMonth = $request->input('nominalPerMonth');
         $save->interest = $request->input('interest');
         $save->date = $request->input('date');
         $save->paymentMethod = $request->input('paymentMethod');
         $save->timePeriod = $request->input('timePeriod');
-
         $save->validationSavingStatus = $request->input('validationSavingStatus') ?? null;
         $save->status = $request->input('status') ?? null;
-
         if ($save->validationSavingStatus === null) {
             $save->validationSavingStatus = "On-Process";
         }
@@ -73,6 +74,7 @@ class SavingController extends Controller
         foreach ($saveData as $save) {
             $saveArray[] = [
                 'id' => $save->id,
+                'userId' => $save->userId,
                 'user' => $save->user,
                 'code' => $save->code,
                 'nominalPerMonth' => $save->nominalPerMonth,

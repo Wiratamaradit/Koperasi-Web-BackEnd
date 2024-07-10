@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id()->primary;
             $table->unsignedBigInteger('installmentId');
             $table->string('fileName');
-            $table->binary('receipt');
+            $table->longBlob('receipt')->nullable();
 
             $table->foreign('installmentId')->references('id')->on('installments');
         });

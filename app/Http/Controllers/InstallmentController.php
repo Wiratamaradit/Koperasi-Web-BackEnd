@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\installment;
-use App\Models\loan;
 
 class InstallmentController extends Controller
 {
